@@ -46,6 +46,7 @@ using namespace ns3;
 NS_LOG_COMPONENT_DEFINE ("OpenFlowLoadBalancerSimulation");
 
 bool verbose = false;
+int client_number = 1;
 int searver_number = OF_DEFAULT_SEARVER_NUMBER;
 oflb_type lb_type = OFLB_RANDOM;
 
@@ -116,8 +117,11 @@ main (int argc, char *argv[])
   //
   // Explicitly create the nodes required by the topology (shown above).
   //
+  NS_LOG_INFO ("Create clients.");
+  NodeContainer clients;
+  clients.Create (client_number);
+  
   NS_LOG_INFO ("Create searvers.");
-  NS_LOG_INFO (searver_number);
   NodeContainer searvers;
   searvers.Create (searver_number);
 
@@ -130,8 +134,15 @@ main (int argc, char *argv[])
   csma.SetChannelAttribute ("Delay", TimeValue (MilliSeconds (2)));
 
   // Create the csma links, from each terminal to the switch
+  NetDeviceContainer clientDevices;
   NetDeviceContainer searverDevices;
   NetDeviceContainer switchDevices;
+  for (int i = 0; i < client_number; i++)
+    {
+      NetDeviceContainer link = csma.Install (NodeContainer (searvers.Get (i), csmaSwitch));
+      searverDevices.Add (link.Get (0));
+      switchDevices.Add (link.Get (1));
+    }
   for (int i = 0; i < searver_number; i++)
     {
       NetDeviceContainer link = csma.Install (NodeContainer (searvers.Get (i), csmaSwitch));
@@ -143,18 +154,24 @@ main (int argc, char *argv[])
   Ptr<Node> switchNode = csmaSwitch.Get (0);
   OpenFlowSwitchHelper swtch;
 
+  Ptr<ns3::ofi::Controller> controller = NULL;
+
   switch (lb_type) {
   case OFLB_RANDOM: {
     NS_LOG_INFO ("Using Random Load Balancer.");
-    Ptr<ns3::ofi::DropController> controller = CreateObject<ns3::ofi::DropController> ();
+    controller = CreateObject<ns3::ofi::RandomizeController> ();
     swtch.Install (switchNode, switchDevices, controller);
     break;
   }
   case OFLB_ROUND_ROBIN:
     NS_LOG_INFO ("Using Round-Robin Load Balancer.");
+    controller = CreateObject<ns3::ofi::RoundRobinController> ();
+    swtch.Install (switchNode, switchDevices, controller);
     break;
   case OFLB_IP_HASHING:
     NS_LOG_INFO ("Using IP-Hashing Load Balancer.");
+    controller = CreateObject<ns3::ofi::IPHashingController> ();
+    swtch.Install (switchNode, switchDevices, controller);
     break;
   default:
     break;
@@ -174,7 +191,7 @@ main (int argc, char *argv[])
 
   //
   // Configure tracing of all enqueue, dequeue, and NetDevice receive events.
-  // Trace output will be sent to the file "openflow-switch.tr"
+  // Trace output will be sent to the file "openflow-loadbalancer.tr"
   //
   AsciiTraceHelper ascii;
   csma.EnableAsciiAll (ascii.CreateFileStream ("openflow-loadbalancer.tr"));
@@ -182,7 +199,7 @@ main (int argc, char *argv[])
   //
   // Also configure some tcpdump traces; each interface will be traced.
   // The output files will be named:
-  //     openflow-switch-<nodeId>-<interfaceId>.pcap
+  //     openflow-loadbalancer-<nodeId>-<interfaceId>.pcap
   // and can be read by the "tcpdump -r" command (use "-tt" option to
   // display timestamps correctly)
   //
