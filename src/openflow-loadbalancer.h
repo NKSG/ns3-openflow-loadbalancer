@@ -1,7 +1,7 @@
 #ifndef OPENFLOW_LOADBALANCER_H
 #define OPENFLOW_LOADBALANCER_H
 
-#define OF_DEFAULT_SEARVER_NUMBER 4
+#define OF_DEFAULT_SERVER_NUMBER 4
 
 enum oflb_type {
   /* The type of Load Balancer. */

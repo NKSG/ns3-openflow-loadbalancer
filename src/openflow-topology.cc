@@ -47,7 +47,7 @@ NS_LOG_COMPONENT_DEFINE ("OpenFlowLoadBalancerSimulation");
 
 bool verbose = false;
 int client_number = 1;
-int searver_number = OF_DEFAULT_SEARVER_NUMBER;
+int server_number = OF_DEFAULT_SERVER_NUMBER;
 oflb_type lb_type = OFLB_RANDOM;
 
 bool
@@ -58,10 +58,10 @@ SetVerbose (std::string value)
 }
 
 bool
-SetSearverNumber (std::string value)
+SetServerNumber (std::string value)
 {
   try {
-    searver_number = atoi (value.c_str ());
+    server_number = atoi (value.c_str ());
     return true;
     }
   catch (...) { return false; }
@@ -100,8 +100,8 @@ main (int argc, char *argv[])
   CommandLine cmd;
   cmd.AddValue ("v", "Verbose (turns on logging).", MakeCallback (&SetVerbose));
   cmd.AddValue ("verbose", "Verbose (turns on logging).", MakeCallback (&SetVerbose));
-  cmd.AddValue ("n", "Number of Searver behind the Load-Balancer.", MakeCallback (&SetSearverNumber));
-  cmd.AddValue ("number", "Number of Searver behind the Load-Balancer.", MakeCallback (&SetSearverNumber));
+  cmd.AddValue ("n", "Number of Server behind the Load-Balancer.", MakeCallback (&SetServerNumber));
+  cmd.AddValue ("number", "Number of Server behind the Load-Balancer.", MakeCallback (&SetServerNumber));
   cmd.AddValue ("t", "Load Balancer Type.", MakeCallback ( &SetType));
   cmd.AddValue ("type", "Load Balancer Type.", MakeCallback ( &SetType));
 
@@ -121,32 +121,33 @@ main (int argc, char *argv[])
   NodeContainer clients;
   clients.Create (client_number);
   
-  NS_LOG_INFO ("Create searvers.");
-  NodeContainer searvers;
-  searvers.Create (searver_number);
+  NS_LOG_INFO ("Create servers.");
+  NodeContainer servers;
+  servers.Create (server_number);
 
   NodeContainer csmaSwitch;
   csmaSwitch.Create (1);
 
   NS_LOG_INFO ("Build Topology");
+
   CsmaHelper csma;
   csma.SetChannelAttribute ("DataRate", DataRateValue (5000000));
   csma.SetChannelAttribute ("Delay", TimeValue (MilliSeconds (2)));
 
   // Create the csma links, from each terminal to the switch
   NetDeviceContainer clientDevices;
-  NetDeviceContainer searverDevices;
+  NetDeviceContainer serverDevices;
   NetDeviceContainer switchDevices;
-  for (int i = 0; i < client_number; i++)
+  for (int i = 0; i < server_number; i++)
     {
-      NetDeviceContainer link = csma.Install (NodeContainer (searvers.Get (i), csmaSwitch));
-      searverDevices.Add (link.Get (0));
+      NetDeviceContainer link = csma.Install (NodeContainer (servers.Get (i), csmaSwitch));
+      serverDevices.Add (link.Get (0));
       switchDevices.Add (link.Get (1));
     }
-  for (int i = 0; i < searver_number; i++)
+  for (int i = 0; i < client_number; i++)
     {
-      NetDeviceContainer link = csma.Install (NodeContainer (searvers.Get (i), csmaSwitch));
-      searverDevices.Add (link.Get (0));
+      NetDeviceContainer link = csma.Install (NodeContainer (servers.Get (i), csmaSwitch));
+      clientDevices.Add (link.Get (0));
       switchDevices.Add (link.Get (1));
     }
 
@@ -179,13 +180,56 @@ main (int argc, char *argv[])
 
   // Add internet stack to the terminals
   InternetStackHelper internet;
-  internet.Install (searvers);
+  internet.Install (servers);
+  internet.Install (clients);
 
-  // We've got the "hardware" in place.  Now we need to add IP addresses.
-  NS_LOG_INFO ("Assign IP Addresses.");
+  // Assign IP addresses for servers.
+  NS_LOG_INFO ("Assign IP Addresses for servers");
+  for (int i = 0; i < server_number; i++) {
+    Ptr<NetDevice> device = serverDevices.Get (i);
+    Ptr<Node> node = device->GetNode ();
+    Ptr<Ipv4> ipv4 = node->GetObject<Ipv4> ();
+    
+    int32_t interface = ipv4->GetInterfaceForDevice (device);
+    if (interface == -1) {
+        interface = ipv4->AddInterface (device);
+    }
+
+    Ipv4InterfaceAddress ipv4Addr = Ipv4InterfaceAddress ("10.1.1.254", "255.255.255.0");
+    ipv4->AddAddress (interface, ipv4Addr);
+    ipv4->SetMetric (interface, 1);
+    ipv4->SetUp (interface);
+  }
+
+  // Assign IP addresses for clients.
+  NS_LOG_INFO ("Assign IP Addresses for clients.");
   Ipv4AddressHelper ipv4;
   ipv4.SetBase ("10.1.1.0", "255.255.255.0");
-  ipv4.Assign (searverDevices);
+  ipv4.Assign (clientDevices);
+
+  // Create applications for clients.
+  NS_LOG_INFO ("Create Applications for clients.");
+  uint16_t port= 9;   // Discard port (RFC 683)
+
+  OnOffHelper onoff ("ns3::UdpSocketFactory",
+                     Address (InetSocketAddress (Ipv4Address ("10.1.1.254"), port)));
+  onoff.SetConstantRate (DataRate ("500kb/s"));
+
+  for (int i = 0; i < client_number; i++) {
+    ApplicationContainer app = onoff.Install (clients.Get (i));
+    app.Start (Seconds (1.0));
+    app.Stop (Seconds (10.0));
+  }
+
+  // Create Sinker for servers.
+  NS_LOG_INFO ("Create Sinker for servers.");
+
+  PacketSinkHelper sink ("ns3::UdpSocketFactory",
+                         Address (InetSocketAddress (Ipv4Address::GetAny (), port)));
+  for (int i = 0; i < server_number; i++) {
+    ApplicationContainer app = sink.Install (servers.Get (i));
+    app.Start (Seconds (0.0));
+  }
 
   NS_LOG_INFO ("Configure Tracing.");
 
