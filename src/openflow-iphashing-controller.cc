@@ -65,7 +65,23 @@ namespace ns3 {
                 LearnState_t::iterator st = m_learnState.find (src_addr);
                 if (st == m_learnState.end()) {
                     LearnState ls;
+                    ls.port = in_port;
+                    m_learnState.insert (std::make_pair (src_addr,ls));
+                    NS_LOG_INFO ("Learned that " << src_addr << "can be found over port" << in_port);
                     
+                    //Learn src_addr goes to a certain port.
+                    ofp_action_output x2[1];
+                    x2[0].type = htons (OFPAT_OUTPUT);
+                    x2[0].len = htons (sizeof(ofp_action_output));
+                    x2[0].port = in_port;
+                    
+                    //switch ipv4 address and ports to the flow we're modifying
+                    src_addr.Set (key.flow.dl_dst);
+                    dst_addr.Set (key.flow.dl_src);
+                    key.flow.in_port = out_port;
+                    
+                    ofp_flow_mod* ofm2 = BuildFlow (key, -1, OFPFC_MODIFY, x2, sizeof(x2), OFP_FLOW_PERMANENT, m_expirationTime.IsZero () ? OFP_FLOW_PERMANENT : m_expirationTime.GetSeconds ());
+                    SendToSwitch (swtch, ofm2, ofm2->header.length);
                 }
             }
             
