@@ -11,6 +11,12 @@ namespace ofi {
 class RandomizeController : public Controller {
  public:
   void ReceiveFromSwitch (Ptr<OpenFlowSwitchNetDevice> swtch, ofpbuf* buffer);
+  struct PortRecord
+  {
+    uint32_t port;                      ///< client to server in port.
+  };
+  typedef std::map<uint32_t, PortRecord> PortRecord_t;
+  PortRecord_t m_portrecord;
 };
 
 class RoundRobinController : public Controller {
