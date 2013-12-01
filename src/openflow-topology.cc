@@ -46,7 +46,7 @@ using namespace ns3;
 NS_LOG_COMPONENT_DEFINE ("OpenFlowLoadBalancerSimulation");
 
 bool verbose = false;
-int client_number = 1;
+int client_number = 2;
 int server_number = OF_DEFAULT_SERVER_NUMBER;
 oflb_type lb_type = OFLB_RANDOM;
 std::string out_prefix = "openflow-loadbalancer";
@@ -126,6 +126,7 @@ main (int argc, char *argv[])
       LogComponentEnable ("OpenFlowLoadBalancerSimulation", LOG_LEVEL_INFO);
       LogComponentEnable ("OpenFlowInterface", LOG_LEVEL_INFO);
       LogComponentEnable ("OpenFlowSwitchNetDevice", LOG_LEVEL_INFO);
+      LogComponentEnable ("RandomController", LOG_LEVEL_INFO);
     }
 
   //
@@ -160,7 +161,7 @@ main (int argc, char *argv[])
     }
   for (int i = 0; i < client_number; i++)
     {
-      NetDeviceContainer link = csma.Install (NodeContainer (servers.Get (i), csmaSwitch));
+      NetDeviceContainer link = csma.Install (NodeContainer (clients.Get (i), csmaSwitch));
       clientDevices.Add (link.Get (0));
       switchDevices.Add (link.Get (1));
     }
@@ -191,6 +192,8 @@ main (int argc, char *argv[])
   default:
     break;
   }
+
+  controller->ReceiveFromSwitch(NULL,NULL);
 
   // Add internet stack to the terminals
   InternetStackHelper internet;
@@ -229,8 +232,10 @@ main (int argc, char *argv[])
                      Address (InetSocketAddress (Ipv4Address ("10.1.1.254"), port)));
   onoff.SetConstantRate (DataRate ("500kb/s"));
 
+  ApplicationContainer app;
+
   for (int i = 0; i < client_number; i++) {
-    ApplicationContainer app = onoff.Install (clients.Get (i));
+    app = onoff.Install (clients.Get (i));
     app.Start (Seconds (1.0));
     app.Stop (Seconds (10.0));
   }
@@ -241,7 +246,7 @@ main (int argc, char *argv[])
   PacketSinkHelper sink ("ns3::UdpSocketFactory",
                          Address (InetSocketAddress (Ipv4Address::GetAny (), port)));
   for (int i = 0; i < server_number; i++) {
-    ApplicationContainer app = sink.Install (servers.Get (i));
+    app = sink.Install (servers.Get (i));
     app.Start (Seconds (0.0));
   }
 
