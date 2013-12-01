@@ -49,6 +49,7 @@ bool verbose = false;
 int client_number = 1;
 int server_number = OF_DEFAULT_SERVER_NUMBER;
 oflb_type lb_type = OFLB_RANDOM;
+std::string out_prefix = "openflow-loadbalancer";
 
 bool
 SetVerbose (std::string value)
@@ -89,6 +90,17 @@ SetType (std::string value)
   return false;
 }
 
+bool
+SetOutput (std::string value)
+{
+  try {
+    out_prefix = value;
+    return true;
+  }
+  catch (...) { return false; }
+  return false;
+}
+
 int
 main (int argc, char *argv[])
 {
@@ -102,8 +114,10 @@ main (int argc, char *argv[])
   cmd.AddValue ("verbose", "Verbose (turns on logging).", MakeCallback (&SetVerbose));
   cmd.AddValue ("n", "Number of Server behind the Load-Balancer.", MakeCallback (&SetServerNumber));
   cmd.AddValue ("number", "Number of Server behind the Load-Balancer.", MakeCallback (&SetServerNumber));
-  cmd.AddValue ("t", "Load Balancer Type.", MakeCallback ( &SetType));
-  cmd.AddValue ("type", "Load Balancer Type.", MakeCallback ( &SetType));
+  cmd.AddValue ("t", "Load Balancer Type.", MakeCallback (&SetType));
+  cmd.AddValue ("type", "Load Balancer Type.", MakeCallback (&SetType));
+  cmd.AddValue ("o", "Output Prefix.", MakeCallback (&SetOutput));
+  cmd.AddValue ("output", "Output Prefix.", MakeCallback (&SetOutput));
 
   cmd.Parse (argc, argv);
 
@@ -238,7 +252,7 @@ main (int argc, char *argv[])
   // Trace output will be sent to the file "openflow-loadbalancer.tr"
   //
   AsciiTraceHelper ascii;
-  csma.EnableAsciiAll (ascii.CreateFileStream ("openflow-loadbalancer.tr"));
+  csma.EnableAsciiAll (ascii.CreateFileStream (out_prefix+".tr"));
 
   //
   // Also configure some tcpdump traces; each interface will be traced.
@@ -247,7 +261,7 @@ main (int argc, char *argv[])
   // and can be read by the "tcpdump -r" command (use "-tt" option to
   // display timestamps correctly)
   //
-  csma.EnablePcapAll ("openflow-loadbalancer", false);
+  csma.EnablePcapAll (out_prefix, false);
 
   //
   // Now, do the actual simulation.
