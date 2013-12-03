@@ -19,9 +19,14 @@ class RandomizeController : public Controller {
   PortRecord_t m_portrecord;
 };
 
-class RoundRobinController : public Controller {
+class RoundRobinController : public RandomizeController { // to use inherent m_portrecord...
  public:
   void ReceiveFromSwitch (Ptr<OpenFlowSwitchNetDevice> swtch, ofpbuf* buffer);
+  struct RoundRobinState {
+	  uint32_t port;  // last used port
+  };
+  typedef std::map<Ipv4Address, RoundRobinState> RoundRobinState_t;
+  RoundRobinState_t m_lastState;
 };
 
 class IPHashingController : public Controller {
