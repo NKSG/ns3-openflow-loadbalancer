@@ -127,6 +127,7 @@ main (int argc, char *argv[])
       LogComponentEnable ("OpenFlowInterface", LOG_LEVEL_INFO);
       LogComponentEnable ("OpenFlowSwitchNetDevice", LOG_LEVEL_INFO);
       LogComponentEnable ("RandomController", LOG_LEVEL_INFO);
+      LogComponentEnable ("RoundRobinController", LOG_LEVEL_INFO);
     }
 
   //
