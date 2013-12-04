@@ -15,7 +15,7 @@ class RandomizeController : public Controller {
   {
     uint32_t port;                      ///< client to server in port.
   };
-  typedef std::map<uint32_t, PortRecord> PortRecord_t;
+  typedef std::map<Ipv4Address, PortRecord> PortRecord_t;
   PortRecord_t m_portrecord;
 };
 
