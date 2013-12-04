@@ -46,7 +46,7 @@ using namespace ns3;
 NS_LOG_COMPONENT_DEFINE ("OpenFlowLoadBalancerSimulation");
 
 bool verbose = false;
-int client_number = 2;
+int client_number = 12;
 int server_number = OF_DEFAULT_SERVER_NUMBER;
 oflb_type lb_type = OFLB_RANDOM;
 std::string out_prefix = "openflow-loadbalancer";
@@ -193,8 +193,6 @@ main (int argc, char *argv[])
   default:
     break;
   }
-
-  controller->ReceiveFromSwitch(NULL,NULL);
 
   // Add internet stack to the terminals
   InternetStackHelper internet;
