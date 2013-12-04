@@ -56,7 +56,10 @@ void RandomizeController::ReceiveFromSwitch (Ptr<OpenFlowSwitchNetDevice> swtch,
       if (flow_dst_dl_addr.IsBroadcast ())
       {
         //if it is a broadcast msg on link layer, assume it is for ARP, flood it.
-        out_port=0;//FIXME. here assuming only clients will initiate ARP. .
+        uint32_t min = 0;
+        uint32_t max = OF_DEFAULT_SERVER_NUMBER;
+        UniformVariable uv;// random variable generator
+        out_port = uv.GetInteger(min, max);//FIXME. here assuming only clients will initiate ARP. .
       }
       else 
       { //not an ARP message
