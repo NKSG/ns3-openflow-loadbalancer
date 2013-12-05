@@ -68,7 +68,7 @@ void RoundRobinController::ReceiveFromSwitch(Ptr<OpenFlowSwitchNetDevice> swtch,
 		NS_LOG_LOGIC (src_ipv4Addr);
 		NS_LOG_LOGIC (dst_ipv4Addr);
 
-		// learn from each mac_addr and in_port
+		// learn from each src_macAddr and in_port
 		LearnState_t::iterator st = m_learnState.find (src_macAddr);
 		if (st == m_learnState.end()) { // not found, learn it this time!
 			LearnedState ls;
@@ -100,18 +100,23 @@ void RoundRobinController::ReceiveFromSwitch(Ptr<OpenFlowSwitchNetDevice> swtch,
 					out_port = OFPP_FLOOD;
 				} else {
 					if (dst_ipv4Addr.IsEqual(server_ipv4Addr)) {
-						NS_LOG_LOGIC ("Branch in : from client to server, pick a server port");
-						// Add or update record of last used port, server ipv4 address as key
-						RoundRobinState_t::iterator iter = m_lastState.find(dst_ipv4Addr);
-						if (iter != m_lastState.end()) {
-							out_port = iter->second.port;
-							out_port = (out_port + 1) % server_number;
-							iter->second.port = out_port; // update
+						if (src_ipv4Addr.IsEqual(server_ipv4Addr)) {
+							NS_LOG_LOGIC ("Branch in : from server to server... will this happen? => flood");
+							out_port = OFPP_FLOOD;
 						} else {
-							out_port = 0;
-							RoundRobinState rrs;
-							rrs.port = out_port;
-							m_lastState.insert(std::make_pair(dst_ipv4Addr, rrs)); // insert new
+							NS_LOG_LOGIC ("Branch in : from client to server, pick a server port");
+							// Add or update record of last used port, server ipv4 address as key
+							RoundRobinState_t::iterator iter = m_lastState.find(dst_ipv4Addr);
+							if (iter != m_lastState.end()) {
+								out_port = iter->second.port;
+								out_port = (out_port + 1) % server_number;
+								iter->second.port = out_port; // update
+							} else {
+								out_port = 0;
+								RoundRobinState rrs;
+								rrs.port = out_port;
+								m_lastState.insert(std::make_pair(dst_ipv4Addr, rrs)); // insert new
+							}
 						}
 					} else {
 						NS_LOG_LOGIC ("Branch in : not sent to server => flood");
