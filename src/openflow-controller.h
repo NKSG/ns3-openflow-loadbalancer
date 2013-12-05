@@ -19,9 +19,17 @@ class RandomizeController : public Controller {
   PortRecord_t m_portrecord;
 };
 
-class RoundRobinController : public RandomizeController { // to use inherent m_portrecord...
+class RoundRobinController : public Controller {
  public:
   void ReceiveFromSwitch (Ptr<OpenFlowSwitchNetDevice> swtch, ofpbuf* buffer);
+protected:
+  struct LearnedState
+  {
+    uint32_t port;                      ///< Learned port.
+  };
+  typedef std::map<Mac48Address, LearnedState> LearnState_t;
+  LearnState_t m_learnState;            ///< Learned state data.
+
   struct RoundRobinState {
 	  uint32_t port;  // last used port
   };
