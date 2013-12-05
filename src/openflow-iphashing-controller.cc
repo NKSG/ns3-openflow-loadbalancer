@@ -29,7 +29,7 @@ namespace ns3 {
                 //Matching key
                 sw_flow_key key;
                 key.wildcards = 0;
-                flow_extract (buffer, port != 1 ? port : OFPP_NONE, &key.flow);
+                flow_extract (buffer, port != －1 ? port : OFPP_NONE, &key.flow);
                 
                 uint16_t out_port = OFPP_FLOOD;
                 uint16_t in_port = OFPP_NONE;
