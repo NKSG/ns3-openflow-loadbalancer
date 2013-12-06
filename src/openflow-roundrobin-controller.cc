@@ -20,22 +20,6 @@ void RoundRobinController::ReceiveFromSwitch(Ptr<OpenFlowSwitchNetDevice> swtch,
 	// We have received any packet at this point, so we pull the header to figure out what type of packet we're handling.
 	uint8_t type = GetPacketType(buffer);
 
-	/*if (type == OFPT_PORT_STATUS) {
-		NS_LOG_INFO ("Branch in : type == OFPT_PORT_STATUS");
-		ofp_port_status * ops = (ofp_port_status*) ofpbuf_try_pull(buffer, offsetof(ofp_port_status, desc));
-		ofp_phy_port opp = ops->desc;
-		uint8_t reason = ops->reason;
-		if (reason == OFPPR_ADD) {
-			NS_LOG_INFO ("reason == OFPPR_ADD");
-		} else if (reason == OFPPR_DELETE) {
-			NS_LOG_INFO ("reason == OFPPR_DELETE");
-		} else if (reason == OFPPR_MODIFY) {
-			NS_LOG_INFO ("reason == OFPPR_MODIFY");
-		}
-		uint16_t port = opp.port_no;
-		NS_LOG_INFO (port);
-	}*/
-
 	if (type == OFPT_PACKET_IN) // The switch didn't understand the packet it received, so it forwarded it to the controller.
 	{
 		NS_LOG_LOGIC ("Branch in : type == OFPT_PACKET_IN");
@@ -77,16 +61,16 @@ void RoundRobinController::ReceiveFromSwitch(Ptr<OpenFlowSwitchNetDevice> swtch,
 			NS_LOG_INFO ("Learning... mac=" << src_macAddr << " port=" << in_port);
 		}
 
+		bool isArpProbe = false;
+		if (src_ipv4Addr.IsEqual(src_ipv4Addr.GetZero())) {
+			NS_LOG_LOGIC ("Branch in : Sender ipv4 address all zero - ARP probe packet");
+			isArpProbe = true;
+		} else {
+			NS_LOG_LOGIC ("Branch in : Guess this is a normal data packet");
+		}
+
 		if (!dst_macAddr.IsBroadcast()) {
 			NS_LOG_LOGIC ("Branch in : Not broadcast");
-
-			bool isArpProbe = false;
-			if (src_ipv4Addr.IsEqual(src_ipv4Addr.GetZero())) {
-				NS_LOG_LOGIC ("Branch in : Sender ipv4 address all zero - ARP probe packet");
-				isArpProbe = true;
-			} else {
-				NS_LOG_LOGIC ("Branch in : Guess this is a normal data packet");
-			}
 
 			LearnState_t::iterator st = m_learnState.find (dst_macAddr);
 			if (st != m_learnState.end()) {
@@ -94,40 +78,26 @@ void RoundRobinController::ReceiveFromSwitch(Ptr<OpenFlowSwitchNetDevice> swtch,
 				NS_LOG_LOGIC ("Branch in : Found learned! mac=" << dst_macAddr << " out_port=" << out_port);
 			} else {
 				NS_LOG_LOGIC ("Branch in : Mac never learned before"); // never come in...
-				//TODO: if mac learning is not complete, some packet is sent to an unseen mac, then consider using ipv4 address
-				if (isArpProbe) {
-					NS_LOG_LOGIC ("Branch in : ARP probe packet => flood");
-					out_port = OFPP_FLOOD;
-				} else {
-					if (dst_ipv4Addr.IsEqual(server_ipv4Addr)) {
-						if (src_ipv4Addr.IsEqual(server_ipv4Addr)) {
-							NS_LOG_LOGIC ("Branch in : from server to server... will this happen? => flood");
-							out_port = OFPP_FLOOD;
-						} else {
-							NS_LOG_LOGIC ("Branch in : from client to server, pick a server port");
-							// Add or update record of last used port, server ipv4 address as key
-							RoundRobinState_t::iterator iter = m_lastState.find(dst_ipv4Addr);
-							if (iter != m_lastState.end()) {
-								out_port = iter->second.port;
-								out_port = (out_port + 1) % server_number;
-								iter->second.port = out_port; // update
-							} else {
-								out_port = 0;
-								RoundRobinState rrs;
-								rrs.port = out_port;
-								m_lastState.insert(std::make_pair(dst_ipv4Addr, rrs)); // insert new
-							}
-						}
-					} else {
-						NS_LOG_LOGIC ("Branch in : not sent to server => flood");
-						out_port = OFPP_FLOOD;
-					}
-				}
 			}
 
 		} else {
-			NS_LOG_LOGIC ("Branch in : Broadcast => flood");
-			out_port = OFPP_FLOOD;
+			NS_LOG_LOGIC ("Branch in : Broadcast");
+			if (isArpProbe) {
+				// prevent client bothering all servers, select a server to respond to it.
+				RoundRobinState_t::iterator iter = m_lastState.find(server_ipv4Addr);
+				if (iter != m_lastState.end()) {
+					out_port = iter->second.port;
+					out_port = (out_port + 1) % server_number;
+					iter->second.port = out_port; // update
+				} else {
+					out_port = 0;
+					RoundRobinState rrs;
+					rrs.port = out_port;
+					m_lastState.insert(std::make_pair(server_ipv4Addr, rrs)); // insert new
+				}
+			} else {
+				out_port = OFPP_FLOOD;
+			}
 		}
 
 		// Create output-to-port action
