@@ -1,0 +1,14 @@
+As the developing of Software Defined Networking(SDN),
+the devices in the network are becoming more and more programmable \cite{Reitblatt:2011:CUS:2070562.2070569}.
+Therefore a lot of problems in network can be handled more easily.
+One of the most popular solutions to SDN is the OpenFlow protocol,
+which provides a less costly way to achieve both high performance and reasonable programmability \cite{McKeown:2008:OEI:1355734.1355746}.
+
+Load balancing is an important method to distribute workloads across servers
+and it is widely adapted in the area of computer networking.
+The typical way to implement it is using some dedicated load-balancers.
+However, these load-balancers are expensive and not flexible.
+With the help of OpenFlow,
+The SDN based load-balancing is flourishing dramatically \cite{Wang:2011:OSL:1972422.1972438}.
+
+Our project is to use NS-3 simulator to explore different aspects and possibilities in OpenFlow based load-balancing.

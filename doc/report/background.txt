@@ -1,0 +1,42 @@
+\subsection{Load Balancing}
+Load-balancing is used to distribute workload across multiple network links or servers.
+It can help improving the throughput by effectively using multiple resources.
+
+Load-balancing can be achieved in several different ways.
+For example, in early Internet,
+this function is handled by DNS services.
+The DNS servers resolves the domain name to a list of IP addresses
+and shift the order of the list in a round-robin fashion.
+When every clients send their request to the first IP address of its own list,
+the workloads will be distributed to different servers.
+Although this is not a neat way to accomplish the work,
+it turned out to be efficient in practice.
+
+\subsection{OpenFlow Switch}
+An OpenFlow switch is like a standard hardware switch with a flow table that can be manipulated by controllers.
+The switch performs packet forwarding according to this flow table.
+A standard switch is either not able to change this flow table at all
+or only able to modify it in a certain manner like learning switches.
+Meanwhile an OpenFlow switch can change the flow table according to its controller(s).
+
+\subsubsection{Controller}
+According to OpenFlow specification, a controller can be internal or external
+and a switch can have one or more controllers to provide more features.
+The external controllers can use the OpenFlow protocol connecting to the switch over a secure channel.
+There are many different controllers support the OpenFlow protocol, such as NOX/POX, Ryu and Floodlight.
+Unfortunately, currently the NS-3 OpenFlow module doesn't support any kind of external controllers.
+We have to extend the class ns3::ofi::Controller to set our own control logic.
+
+\subsubsection{Flow Table}
+The flow table of an OpenFlow switch is an important component.
+Each entry of that table contains a header field, counters and actions.
+In the header field,
+it stores some TCP/UDP, IP and Ethernet information,
+includes TCP/UDP port number, source and destination IP addresses and MAC addresses.
+The counters and actions are associated to some match of the header field.
+There can also be an expiration time with each entry.
+The controller will get a message when an entry is expired.
+
+\subsection{Related work}
+There was an interesting project conducted by Uppal and Brandon \cite{Uppal:2010}.
+They used a HP 5412zl switch to test the performance of OpenFlow-based load-balancing and the result is promising.
