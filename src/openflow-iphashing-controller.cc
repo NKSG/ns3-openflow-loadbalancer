@@ -1,6 +1,8 @@
 #include "openflow-controller.h"
 #include "ipv4-address.h"
 #include "ns3/log.h"
+#include "ns3/ipv4-list-routing.h"
+#include "ns3/hash-function-impl.h"
 
 #include <iostream>
 #include <string>
@@ -32,7 +34,7 @@ namespace ns3 {
                 flow_extract (buffer, port != －1 ? port : OFPP_NONE, &key.flow);
                 
                 uint16_t out_port = OFPP_FLOOD;
-                uint16_t in_port = OFPP_NONE;
+                uint16_t in_port = ntohs (key.flow.in_port);
                 
                 uint32_t flow_dst_nw_addr = 0;
                 uint32_t flow_src_nw_addr = 0;
@@ -45,7 +47,21 @@ namespace ns3 {
                 flow_src_nw_addr=key.flow.nw_src;
                 
                 if (!dst_addr.isBroadcast()) {
+                    if (isToserver) {
+                        //TODO
+                        
+                        
+                    }
                     
+                    else{
+                        PortRecord_t::iterator st = m_portrecord.find (flow_dst_nw_addr);
+                        if (st != m_portrecord.end()) {
+                            out_port = st->second.port;
+                        }
+                        else{
+                            out_port = OFPP_FLOOD;
+                        }
+                    }
                 }
                 
                 else {
@@ -59,7 +75,6 @@ namespace ns3 {
                 x[0].port = out_port;
                 NS_LOG_FUNCTION (out_port);
                 ofp_flow_mod* ofm = BuildFlow(key, opi->buffer_id, OFPFC_ADD, x, sizeof(x), OFP_FLOW_PERMANENT, OFP_FLOW_PERMANENT);
-                SendToSwitch(swtch, ofm, ofm->header.length);
             }
             
             return;
