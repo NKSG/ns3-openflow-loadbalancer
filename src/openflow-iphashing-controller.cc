@@ -42,15 +42,17 @@ namespace ns3 {
                 Ipv4Address dst_addr;
                 Ipv4Address src_addr;
                 Ipv4Address server_addr ("10.1.1.254");
+                bool isToServer = false;
                 dst_addr.ConvertFrom(key.flow.nw_dst);
                 flow_dst_nw_addr=key.flow.nw_dst;
                 flow_src_nw_addr=key.flow.nw_src;
+                isToServer = server_addr.isEqual(flow_dst_nw_addr);
                 
-                if (!dst_addr.isBroadcast()) {
+                
+                if (dst_addr.isBroadcast()) {
                     if (isToserver) {
-                        //TODO
-                        
-                        
+                        std::hash<std::string> ip_hash;
+                        out_portb = ip_hash(key.first) + in_port;
                     }
                     
                     else{
